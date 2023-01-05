@@ -20,6 +20,11 @@
 			.label {
 				font-weight: 600;
 			}
+			.label.grey-bg{
+				background-color: #ccc;
+				display: block;
+				padding: 5px;
+			}
 			.input {
 				width: 100%;
 			}
@@ -38,6 +43,25 @@
 			}
 			.button.green:disabled {
 				background-color: gray;
+			}
+			.subject-count, .body-count {
+				background-color: green;
+				color: whitesmoke;
+				padding: 10px;
+				margin: 5px;
+			}
+			.total-count {
+				font-weight: 700;
+				padding: 10px;
+				margin: 5px;
+			}
+			.no-count {
+				background-color: green;
+				color: whitesmoke;
+				font-weight: 700;
+				padding: 10px;
+				margin: 5px;
+				text-align: center;
 			}
 		</style>
 	</head>
@@ -71,10 +95,18 @@
 					<button v-on:click="resetData" class="button gray">Reset</button>&nbsp;
 					<button v-on:click="processInput" class="button green" :disabled="keywords.length === 0 || (body?.trim()?.length <= 0 && subject?.trim()?.length <= 0)">Process</button>
 				</div>
-				<div class="row" v-if="Object.keys(keywordsFound)?.length > 0">
-					<div v-for="k in Object.keys(keywordsFound)" :key="k">
-						<label :for="k + 'Count'">{{k}}: </label>
-						<span :id="k + 'Count'">{{keywordsFound[k]}}</span>
+				<div class="row" v-if="hasProcessed && Object.keys(keywordsFound)?.length <= 0">
+					<div class="no-count">No Spammy keyword Found !!</div>
+				</div>
+				<div class="row" v-if="hasProcessed && Object.keys(keywordsFound)?.length > 0">
+					<div class="subject-count">Spam words in subject: {{foundInSubject}}</div>
+					<div class="body-count">Spam words in body: {{foundInBody}}</div>
+					<div class="total-count">Spam words found ({{foundInSubject + foundInBody}})</div>
+				</div>
+				<div class="row" v-if="hasProcessed && Object.keys(keywordsFound)?.length > 0">
+					<label class="label grey-bg">Word:</label>
+					<div v-for="(k, i) in Object.keys(keywordsFound)" :key="k">
+						<span>{{i + 1}}. {{k}} ({{keywordsFound[k]}})</span>
 					</div>
 				</div>
 			</div>
@@ -91,6 +123,9 @@
 				body: '',
 				keywords: [],
 				keywordsFound: {},
+				foundInSubject: 0,
+				foundInBody: 0,
+				hasProcessed: false,
 				error: '',
 			  }
 			},
@@ -116,6 +151,9 @@
 					this.body = '';
 					this.error = '';
 					this.keywords = [];
+					this.foundInSubject = 0;
+					this.foundInBody = 0;
+					this.hasProcessed = false;
 					try {
 						await this.parseFile();
 					} catch (err) {
@@ -126,23 +164,29 @@
 					if(this.keywords?.length <= 0) return;
 					if(this.subject?.trim()?.length <= 0 && this.body?.trim()?.length <= 0) return;
 					const app = this;
-					const subject = this.subject?.replace(/[^\w\s\']|_/g, "")?.replace(/\s+/g, " ")?.split(' ');
-					const body = this.body?.replace(/[^\w\s\']|_/g, "")?.replace(/\s+/g, " ")?.split(' ');
+					const subject = this.subject?.replace(/[^\w\s\']|_/g, " ")?.replace(/\s+/g, " ")?.split(' ');
+					const body = this.body?.replace(/[^\w\s\']|_/g, " ")?.replace(/\s+/g, " ")?.split(' ');
 					app.keywordsFound = {};
+					app.foundInSubject = 0;
+					app.foundInBody = 0;
+					app.hasProcessed = false;
 					this.keywords.forEach((k) => {
 						subject?.forEach((s) => {
 							if(s?.length > 0 && s?.toLowerCase() === k?.toLowerCase())
 							{
 								app.keywordsFound[k] = (this.keywordsFound[k] || 0) + 1;
+								app.foundInSubject++;
 							}
 						});
 						body?.forEach((s) => {
 							if(s?.length > 0 && s?.toLowerCase() === k?.toLowerCase())
 							{
 								app.keywordsFound[k] = (this.keywordsFound[k] || 0) + 1;
+								app.foundInBody++;
 							}
 						});
 					});
+					app.hasProcessed = true;
 				}
 			}
 		  }).mount('#app')
